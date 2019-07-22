@@ -16,7 +16,7 @@ public class ProductItemProcessor implements ItemProcessor<Product, Product> {
 
     @Override
     public Product process(Product item) throws Exception {
-        logger.info("Mocking item processing...");
+        logger.info("Processing item Product ID ={} & name = {}", item.getProductId(), item.getName());
         item.setName(item.getName().toUpperCase());
         return item;
     }
