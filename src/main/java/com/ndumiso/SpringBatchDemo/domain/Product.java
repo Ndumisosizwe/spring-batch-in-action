@@ -1,9 +1,6 @@
 package com.ndumiso.SpringBatchDemo.domain;
 
-import javax.persistence.Entity;
-import javax.persistence.GeneratedValue;
-import javax.persistence.GenerationType;
-import javax.persistence.Id;
+import javax.persistence.*;
 import java.io.Serializable;
 import java.math.BigDecimal;
 import java.util.Objects;
@@ -17,10 +14,17 @@ import java.util.Objects;
 public class Product implements Serializable {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.SEQUENCE)
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private String id;
+
+    private String productId;
+
+    @Column(name = "product_name")
     private String name;
+
+    @Column(name = "product_description")
     private String description;
+
     private BigDecimal price;
 
     public Product() {
@@ -30,6 +34,14 @@ public class Product implements Serializable {
         this.name = name;
         this.description = description;
         this.price = price;
+    }
+
+    public String getProductId() {
+        return productId;
+    }
+
+    public void setProductId(String productId) {
+        this.productId = productId;
     }
 
     public String getId() {
@@ -84,6 +96,7 @@ public class Product implements Serializable {
     public String toString() {
         return "Product{" +
                 "id='" + id + '\'' +
+                ", productId='" + productId + '\'' +
                 ", name='" + name + '\'' +
                 ", description='" + description + '\'' +
                 ", price=" + price +

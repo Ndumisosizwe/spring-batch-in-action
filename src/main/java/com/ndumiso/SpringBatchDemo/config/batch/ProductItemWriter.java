@@ -28,6 +28,6 @@ public class ProductItemWriter implements ItemWriter<Product> {
     public void write(List<? extends Product> items) throws Exception {
         logger.info("The chunk size is... " + items.size());
         logger.info("Processing chunk {}:", items);
-        this.productRepository.saveAll(items);
+//        this.productRepository.saveAll(items);
     }
 }
