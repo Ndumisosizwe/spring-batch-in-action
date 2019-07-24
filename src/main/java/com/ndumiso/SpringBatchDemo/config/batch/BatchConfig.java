@@ -29,6 +29,8 @@ public class BatchConfig {
 
     private final StepBuilderFactory stepBuilderFactory;
 
+    private static final String[] productListOfFields = new String[] {"PRODUCT_ID", "NAME", "DESCRIPTION", "PRICE"};
+
     public BatchConfig(JobBuilderFactory jobBuilderFactory, StepBuilderFactory stepBuilderFactory) {
         this.jobBuilderFactory = jobBuilderFactory;
         this.stepBuilderFactory = stepBuilderFactory;
@@ -41,7 +43,7 @@ public class BatchConfig {
         flatFileProductReader.setLinesToSkip(1); // skip the first line of the CVS since it's the HEADER line.
 
         DelimitedLineTokenizer delimitedLineTokenizer = new DelimitedLineTokenizer(); // uses comma as default delimiter
-        delimitedLineTokenizer.setNames("PRODUCT_ID", "NAME", "DESCRIPTION", "PRICE");
+        delimitedLineTokenizer.setNames(productListOfFields);
 
         DefaultLineMapper<Product> productLineMapper = new DefaultLineMapper<>();
         productLineMapper.setLineTokenizer(delimitedLineTokenizer);
@@ -69,7 +71,7 @@ public class BatchConfig {
     @Bean
     public Step step1(ProductItemWriter writer) {
         return stepBuilderFactory.get("step1")
-                .<Product, Product>chunk(10)
+                .<Product, Product>chunk(50)
                 .reader(productReader())
                 .processor(productItemProcessor())
                 .writer(writer)
