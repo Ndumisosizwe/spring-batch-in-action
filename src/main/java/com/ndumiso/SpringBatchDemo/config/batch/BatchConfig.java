@@ -25,9 +25,9 @@ import org.springframework.core.io.ClassPathResource;
 public class BatchConfig {
 
 
-    public final JobBuilderFactory jobBuilderFactory;
+    private final JobBuilderFactory jobBuilderFactory;
 
-    public final StepBuilderFactory stepBuilderFactory;
+    private final StepBuilderFactory stepBuilderFactory;
 
     public BatchConfig(JobBuilderFactory jobBuilderFactory, StepBuilderFactory stepBuilderFactory) {
         this.jobBuilderFactory = jobBuilderFactory;
@@ -57,8 +57,8 @@ public class BatchConfig {
     }
 
     @Bean
-    public Job importProductJob(JobCompletionNotification listener, Step step1) {
-        return jobBuilderFactory.get("importProductJob")
+    public Job importProductsJob(JobCompletionNotification listener, Step step1) {
+        return jobBuilderFactory.get("importProductsJob")
                 .incrementer(new RunIdIncrementer())
                 .listener(listener)
                 .flow(step1)

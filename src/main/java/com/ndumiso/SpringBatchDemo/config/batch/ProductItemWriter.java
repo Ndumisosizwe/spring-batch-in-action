@@ -25,7 +25,7 @@ public class ProductItemWriter implements ItemWriter<Product> {
     }
 
     @Override
-    public void write(List<? extends Product> items) throws Exception {
+    public void write(List<? extends Product> items) {
         logger.info("The chunk size is... " + items.size());
         logger.info("Processing chunk {}:", items);
         this.productRepository.saveAll(items);
