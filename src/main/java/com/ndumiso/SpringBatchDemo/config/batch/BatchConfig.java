@@ -1,7 +1,7 @@
 package com.ndumiso.SpringBatchDemo.config.batch;
 
-import com.ndumiso.SpringBatchDemo.config.batch.fieldmapper.ProductFieldSetMapper;
-import com.ndumiso.SpringBatchDemo.domain.Product;
+import com.ndumiso.SpringBatchDemo.config.batch.fieldmapper.XPBCommissionStatementFieldMapper;
+import com.ndumiso.SpringBatchDemo.domain.XPBCommissionStatementData;
 import org.springframework.batch.core.Job;
 import org.springframework.batch.core.Step;
 import org.springframework.batch.core.configuration.annotation.EnableBatchProcessing;
@@ -29,38 +29,35 @@ public class BatchConfig {
 
     private final StepBuilderFactory stepBuilderFactory;
 
-    private static final String[] productListOfFields = new String[] {"PRODUCT_ID", "NAME", "DESCRIPTION", "PRICE"};
+    private static final String[] xpbStatementFields = new String[]{"ucn", "statementNumber", "totalCommissionExclVat", "totalCommissionInclVat", "withholdingTax", "totalVat"};
 
     public BatchConfig(JobBuilderFactory jobBuilderFactory, StepBuilderFactory stepBuilderFactory) {
         this.jobBuilderFactory = jobBuilderFactory;
         this.stepBuilderFactory = stepBuilderFactory;
     }
 
+
     @Bean
-    public FlatFileItemReader<Product> productReader() {
-        FlatFileItemReader<Product> flatFileProductReader = new FlatFileItemReader<>();
-        flatFileProductReader.setResource(new ClassPathResource("MOCK_PRODUCTS.csv"));
-        flatFileProductReader.setLinesToSkip(1); // skip the first line of the CVS since it's the HEADER line.
+    public FlatFileItemReader<XPBCommissionStatementData> XPBStatementsReader() {
+        FlatFileItemReader<XPBCommissionStatementData> flatFileProductReader = new FlatFileItemReader<>();
+        flatFileProductReader.setResource(new ClassPathResource("XPB_STATEMENTS_MOCK.csv"));
+        flatFileProductReader.setLinesToSkip(1);
+        DelimitedLineTokenizer delimitedLineTokenizer = new DelimitedLineTokenizer();
+        delimitedLineTokenizer.setDelimiter("|");
+        delimitedLineTokenizer.setNames(xpbStatementFields);
 
-        DelimitedLineTokenizer delimitedLineTokenizer = new DelimitedLineTokenizer(); // uses comma as default delimiter
-        delimitedLineTokenizer.setNames(productListOfFields);
+        DefaultLineMapper<XPBCommissionStatementData> commStatementLineMapper = new DefaultLineMapper<>();
+        commStatementLineMapper.setLineTokenizer(delimitedLineTokenizer);
+        commStatementLineMapper.setFieldSetMapper(new XPBCommissionStatementFieldMapper());
 
-        DefaultLineMapper<Product> productLineMapper = new DefaultLineMapper<>();
-        productLineMapper.setLineTokenizer(delimitedLineTokenizer);
-        productLineMapper.setFieldSetMapper(new ProductFieldSetMapper());
-
-        flatFileProductReader.setLineMapper(productLineMapper);
+        flatFileProductReader.setLineMapper(commStatementLineMapper);
         return flatFileProductReader;
     }
 
-    @Bean
-    public ProductItemProcessor productItemProcessor() {
-        return new ProductItemProcessor();
-    }
 
     @Bean
-    public Job importProductsJob(JobCompletionNotification listener, Step step1) {
-        return jobBuilderFactory.get("importProductsJob")
+    public Job importXPBDataJob(JobCompletionNotification listener, Step step1) {
+        return jobBuilderFactory.get("importXPBData")
                 .incrementer(new RunIdIncrementer())
                 .listener(listener)
                 .flow(step1)
@@ -69,12 +66,12 @@ public class BatchConfig {
     }
 
     @Bean
-    public Step step1(ProductItemWriter writer) {
-        return stepBuilderFactory.get("step1")
-                .<Product, Product>chunk(50)
-                .reader(productReader())
-                .processor(productItemProcessor())
-                .writer(writer)
+    public Step step1(XPBDataItemWriter xpbDataWriter) {
+        return stepBuilderFactory.get("step1 - read rows from XPB CSV file & and write each POJO to database")
+                .<XPBCommissionStatementData, XPBCommissionStatementData>chunk(100)
+                .reader(XPBStatementsReader())
+//                .processor(productItemProcessor()) we can have a processor
+                .writer(xpbDataWriter)
                 .build();
 
     }
