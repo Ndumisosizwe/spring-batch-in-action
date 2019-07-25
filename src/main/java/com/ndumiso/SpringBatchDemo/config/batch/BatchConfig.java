@@ -9,11 +9,15 @@ import org.springframework.batch.core.configuration.annotation.JobBuilderFactory
 import org.springframework.batch.core.configuration.annotation.StepBuilderFactory;
 import org.springframework.batch.core.launch.support.RunIdIncrementer;
 import org.springframework.batch.item.file.FlatFileItemReader;
+import org.springframework.batch.item.file.MultiResourceItemReader;
 import org.springframework.batch.item.file.mapping.DefaultLineMapper;
 import org.springframework.batch.item.file.transform.DelimitedLineTokenizer;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.core.io.ClassPathResource;
+import org.springframework.core.io.Resource;
+
+import java.io.IOException;
 
 /**
  * Configuration defining a Jobs , Steps, ItemReaders, Processors and Writers to use.
@@ -29,6 +33,10 @@ public class BatchConfig {
 
     private final StepBuilderFactory stepBuilderFactory;
 
+    //    @Value("classpath:XPB_STATEMENTS_MOCK*.csv") //classpath
+    @Value("file:C:/integration/xpb_statements_data/zambia/january_2018/XPB_STATEMENTS_MOCK*.csv") //in file system
+    private Resource[] commissionStatementFiles;
+
     private static final String[] xpbStatementFields = new String[]{"ucn", "statementNumber", "totalCommissionExclVat", "totalCommissionInclVat", "withholdingTax", "totalVat"};
 
     public BatchConfig(JobBuilderFactory jobBuilderFactory, StepBuilderFactory stepBuilderFactory) {
@@ -36,11 +44,25 @@ public class BatchConfig {
         this.stepBuilderFactory = stepBuilderFactory;
     }
 
+    @Bean
+    public MultiResourceItemReader<XPBCommissionStatementData> multiResourceItemReader() throws IOException {
+        MultiResourceItemReader<XPBCommissionStatementData> resourceItemReader = new MultiResourceItemReader<>();
+        for (Resource resource : commissionStatementFiles) {
+            System.out.println(resource.getURL().toString());
+        }
+        for (int i = 0; i < 11; i++) {
+            System.out.println();
+        }
+        resourceItemReader.setResources(commissionStatementFiles);
+        resourceItemReader.setStrict(true);
+        resourceItemReader.setDelegate(fileItemReader());
+        return resourceItemReader;
+    }
+
 
     @Bean
-    public FlatFileItemReader<XPBCommissionStatementData> XPBStatementsReader() {
+    public FlatFileItemReader<XPBCommissionStatementData> fileItemReader() {
         FlatFileItemReader<XPBCommissionStatementData> flatFileProductReader = new FlatFileItemReader<>();
-        flatFileProductReader.setResource(new ClassPathResource("XPB_STATEMENTS_MOCK.csv"));
         flatFileProductReader.setLinesToSkip(1);
         DelimitedLineTokenizer delimitedLineTokenizer = new DelimitedLineTokenizer();
         delimitedLineTokenizer.setDelimiter("|");
@@ -66,10 +88,10 @@ public class BatchConfig {
     }
 
     @Bean
-    public Step step1(XPBDataItemWriter xpbDataWriter) {
+    public Step step1(XPBDataItemWriter xpbDataWriter) throws IOException {
         return stepBuilderFactory.get("step1 - read rows from XPB CSV file & and write each POJO to database")
                 .<XPBCommissionStatementData, XPBCommissionStatementData>chunk(100)
-                .reader(XPBStatementsReader())
+                .reader(multiResourceItemReader())
 //                .processor(productItemProcessor()) we can have a processor
                 .writer(xpbDataWriter)
                 .build();
