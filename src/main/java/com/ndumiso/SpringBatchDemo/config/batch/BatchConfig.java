@@ -33,8 +33,8 @@ public class BatchConfig {
 
     private final StepBuilderFactory stepBuilderFactory;
 
-    //    @Value("classpath:XPB_STATEMENTS_MOCK*.csv") //classpath
-    @Value("file:C:/integration/xpb_statements_data/zambia/january_2018/XPB_STATEMENTS_MOCK*.csv") //in file system
+        @Value("classpath:XPB_STATEMENTS_MOCK*.csv") //classpath
+//    @Value("file:C:/integration/xpb_statements_data/zambia/january_2018/XPB_STATEMENTS_MOCK*.csv") //in file system
     private Resource[] commissionStatementFiles;
 
     private static final String[] xpbStatementFields = new String[]{"ucn", "statementNumber", "totalCommissionExclVat", "totalCommissionInclVat", "withholdingTax", "totalVat"};
@@ -47,12 +47,6 @@ public class BatchConfig {
     @Bean
     public MultiResourceItemReader<XPBCommissionStatementData> multiResourceItemReader() throws IOException {
         MultiResourceItemReader<XPBCommissionStatementData> resourceItemReader = new MultiResourceItemReader<>();
-        for (Resource resource : commissionStatementFiles) {
-            System.out.println(resource.getURL().toString());
-        }
-        for (int i = 0; i < 11; i++) {
-            System.out.println();
-        }
         resourceItemReader.setResources(commissionStatementFiles);
         resourceItemReader.setStrict(true);
         resourceItemReader.setDelegate(fileItemReader());
