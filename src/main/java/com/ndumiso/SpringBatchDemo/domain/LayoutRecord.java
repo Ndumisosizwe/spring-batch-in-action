@@ -18,7 +18,9 @@ import java.time.LocalDate;
 public class LayoutRecord {
 
     @NotNull
-    private String statementNumber;
+    //  @OneToOne
+    //  @JoinColumn(name = "statementNumber")
+    private String statementNumber;   //TODO : Need to Implement DB relationships later
 
     @NotNull
     private LocalDate statementStartPeriod;

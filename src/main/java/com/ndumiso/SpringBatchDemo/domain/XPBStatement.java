@@ -6,7 +6,7 @@ import javax.validation.constraints.NotNull;
 import java.util.Set;
 
 /**
- * XPB sends us a subset of data related to a statement/client
+ * XPB sends us a subset of data with many DDAVA statements in a "|" delimited file format.
  */
 
 @Getter
@@ -26,6 +26,7 @@ public class XPBStatement {
 
     @NotNull
     @EqualsAndHashCode.Include
+//    @OneToOne
     private LayoutRecord layoutRecord;
 
     @NotNull
@@ -37,4 +38,9 @@ public class XPBStatement {
     @NotNull
     private Set<GroupingRecord> groupingRecords;
 
+    @NotNull
+    private Set<OtherRecord> otherRecords;
+
+    @NotNull
+    private Set<DetailRecord> detailRecords;
 }

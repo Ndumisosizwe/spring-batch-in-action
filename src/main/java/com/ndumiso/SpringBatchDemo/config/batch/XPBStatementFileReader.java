@@ -15,7 +15,7 @@ import java.time.LocalDate;
 import java.util.*;
 
 /**
- * A custom ItemReader that interprets and reads XPB statement pipe delimited files.
+ * A custom ItemReader that interprets and reads XPB statement 'pipe delimited' files.
  *
  * @author F5298334
  */
@@ -47,114 +47,151 @@ public class XPBStatementFileReader implements
             Scanner statementScanner = new Scanner(resource.getFile());
             String resourceHeaderLine = statementScanner.nextLine();
             LOGGER.info("header line {}", resourceHeaderLine);
-            String line;
+            String line = "";
             XPBStatement xpbStatement = null;
-            Set<SummaryRecord> summaryRecords = null;
-            Set<TaxRecord> taxRecords = null;
-            Set<GroupingRecord> groupingRecords = null;
 
             while (statementScanner.hasNextLine()) {
                 line = statementScanner.nextLine();
-                String[] splitLine = line.split("\\|");
+                String[] lineFields = line.split("\\|");
                 if (line.startsWith("L|")) {
-                    finalizeAndAddNewStatement(xpbStatement, summaryRecords, taxRecords, groupingRecords);
+                    finalizeAndAddNewStatement(xpbStatement);
                     xpbStatement = new XPBStatement();
-                    summaryRecords = new TreeSet<>(Comparator.comparing(SummaryRecord::getOrder));
-                    taxRecords = new TreeSet<>(Comparator.comparing(TaxRecord::getOrder));
-                    groupingRecords = new TreeSet<>(Comparator.comparing(GroupingRecord::getOrder));
                     xpbStatement.setFileName(resource.getFilename());
                     xpbStatement.setProductionDate(resourceHeaderLine.split("\\|")[1]);
-                    setLayoutLayoutRecord(xpbStatement, splitLine);
+                    setLayoutLayoutRecord(xpbStatement, lineFields);
+                    xpbStatement.setSummaryRecords(new TreeSet<>(Comparator.comparing(SummaryRecord::getOrder)));
+                    xpbStatement.setTaxRecords(new TreeSet<>(Comparator.comparing(TaxRecord::getOrder)));
+                    xpbStatement.setGroupingRecords(new TreeSet<>(Comparator.comparing(GroupingRecord::getOrder)));
+                    xpbStatement.setOtherRecords(new TreeSet<>(Comparator.comparing(OtherRecord::getOrder)));
+                    xpbStatement.setDetailRecords(new TreeSet<>(Comparator.comparing(DetailRecord::getOrder)));
                 } else if (line.startsWith("S|") && xpbStatement != null) {
-                    addSummaryRecord(summaryRecords, splitLine);
+                    addSummaryRecord(xpbStatement, lineFields);
                 } else if (line.startsWith("X|") && xpbStatement != null) {
-                    addTaxRecords(taxRecords, splitLine);
+                    addTaxRecords(xpbStatement, lineFields);
                 } else if (line.startsWith("G|") && xpbStatement != null) {
-                    addGroupingRecord(groupingRecords, splitLine);
+                    addGroupingRecord(xpbStatement, lineFields);
+                } else if (line.startsWith("O|") && xpbStatement != null) {
+                    addOtherRecord(xpbStatement, lineFields);
+                } else if (line.startsWith("D|") && xpbStatement != null) {
+                    addDetailedRecord(xpbStatement, lineFields);
                 }
             }
-            // adds the very last statement that was read in the file.
-            finalizeAndAddNewStatement(xpbStatement, summaryRecords, taxRecords, groupingRecords);
+            // adds the very last statement before the end of the file.
+            finalizeAndAddNewStatement(xpbStatement);
             nextStatementIndex = 0;
+            if (line.startsWith("T|") && Integer.parseInt(line.split("\\|")[1]) != statementList.size())
+                throw new IllegalArgumentException(
+                        "Number of statements imported from file [" + resource.getFilename() + "] does not correspond to trailer record of the file." +
+                                " Statement list size : " + statementList.size() + ". Trailer record : " + line);
+
         } catch (IOException e) {
             LOGGER.error(e.getMessage());
             throw new RuntimeException(e);
         }
     }
 
-    private void finalizeAndAddNewStatement(XPBStatement xpbStatement, Set<SummaryRecord> summaryRecords, Set<TaxRecord> taxRecords,
-                                            Set<GroupingRecord> groupingRecords) {
+
+    private void finalizeAndAddNewStatement(XPBStatement xpbStatement) {
         if (xpbStatement != null) {
-            xpbStatement.setSummaryRecords(summaryRecords);
-            xpbStatement.setTaxRecords(taxRecords);
-            xpbStatement.setGroupingRecords(groupingRecords);
             statementList.add(xpbStatement);
         }
     }
 
-    private void addGroupingRecord(Set<GroupingRecord> groupingRecords, String[] splitLine) {
-        if (splitLine.length != 10)
-            throw new IllegalArgumentException("Invalid number of fields for grouping (G) record : "
-                    + Arrays.toString(splitLine) + ". Expected 10, got " + splitLine.length);
-        groupingRecords.add(GroupingRecord.builder()
-                .statementNumber(splitLine[1])
-                .order(Integer.parseInt(splitLine[2]))
-                .serviceCode(splitLine[3])
-                .serviceDescription(splitLine[4])
-                .chargeCode(splitLine[5])
-                .chargeDescription(splitLine[6])
-                .totalNumberOfTransactions(Integer.parseInt(splitLine[7]))
-                .transactionCurrency(splitLine[8])
-                .totalTransactionValue(new BigDecimal(splitLine[9]))
+    private void addDetailedRecord(XPBStatement xpbStatement, String[] lineFields) {
+        validateLineNumberOfFields(lineFields, DetailRecord.class);
+        xpbStatement.getDetailRecords().add(DetailRecord.builder()
+                .statementNumber(lineFields[1])
+                .order(Integer.parseInt(lineFields[2]))
+                .transactionDate(transformToLocalDate(lineFields[3]))
+                .serviceCode(lineFields[4])
+                .serviceDescription(lineFields[5])
+                .chargeCode(lineFields[6])
+                .chargeDescription(lineFields[7])
+                .transactionCurrency(lineFields[8])
+                .transactionAmount(new BigDecimal(lineFields[9]))
+                .commissionCurrency(lineFields[10])
+                .commissionAmount(new BigDecimal(lineFields[11]))
                 .build());
     }
 
-    private void addTaxRecords(Set<TaxRecord> taxRecords, String[] splitLine) {
-        if (splitLine.length != 7)
-            throw new IllegalArgumentException("Invalid number of fields for tax (X) record : "
-                    + Arrays.toString(splitLine) + ". Expected 7, got " + splitLine.length);
-        taxRecords.add(TaxRecord.builder()
-                .statementNumber(splitLine[1])
-                .order(Integer.parseInt(splitLine[2]))
-                .type(splitLine[3])
-                .currency(splitLine[4])
-                .taxAmount(new BigDecimal(splitLine[5]))
-                .rate(new BigDecimal(splitLine[6]))
+    private void addOtherRecord(XPBStatement xpbStatement, String[] lineFields) {
+        validateLineNumberOfFields(lineFields, OtherRecord.class);
+        xpbStatement.getOtherRecords().add(OtherRecord.builder()
+                .statementNumber(lineFields[1])
+                .order(Integer.parseInt(lineFields[2]))
+                .serviceCode(lineFields[3])
+                .serviceDescription(lineFields[4])
+                .chargeCode(lineFields[5])
+                .chargeDescription(lineFields[6])
+                .currency(lineFields[7])
+                .amount(new BigDecimal(lineFields[8]))
+                .build());
+
+    }
+
+    private void addGroupingRecord(XPBStatement xpbStatement, String[] lineFields) {
+        validateLineNumberOfFields(lineFields, GroupingRecord.class);
+        xpbStatement.getGroupingRecords().add(GroupingRecord.builder()
+                .statementNumber(lineFields[1])
+                .order(Integer.parseInt(lineFields[2]))
+                .serviceCode(lineFields[3])
+                .serviceDescription(lineFields[4])
+                .chargeCode(lineFields[5])
+                .chargeDescription(lineFields[6])
+                .totalNumberOfTransactions(Integer.parseInt(lineFields[7]))
+                .transactionCurrency(lineFields[8])
+                .totalTransactionValue(new BigDecimal(lineFields[9]))
                 .build());
     }
 
-    private void addSummaryRecord(Set<SummaryRecord> summaryRecords, String[] splitLine) {
-        if (splitLine.length != 6)
-            throw new IllegalArgumentException("Invalid number of fields for summary record (S) : "
-                    + Arrays.toString(splitLine) + ". Expected 6, got " + splitLine.length);
-        summaryRecords.add(SummaryRecord.builder()
-                .statementNumber(splitLine[1])
-                .order(Integer.parseInt(splitLine[2]))
-                .type(splitLine[3])
-                .currency(splitLine[4])
-                .totalAmount(new BigDecimal(splitLine[5]))
+    private void addTaxRecords(XPBStatement xpbStatement, String[] lineFields) {
+        validateLineNumberOfFields(lineFields, TaxRecord.class);
+        xpbStatement.getTaxRecords().add(TaxRecord.builder()
+                .statementNumber(lineFields[1])
+                .order(Integer.parseInt(lineFields[2]))
+                .type(lineFields[3])
+                .currency(lineFields[4])
+                .taxAmount(new BigDecimal(lineFields[5]))
+                .rate(new BigDecimal(lineFields[6]))
                 .build());
     }
 
-    private void setLayoutLayoutRecord(XPBStatement xpbStatement, String[] splitLine) {
-        if (splitLine.length != 6)
-            throw new IllegalArgumentException("Invalid number of fields for layout record (L) : "
-                    + Arrays.toString(splitLine) + ". Expected 6, got " + splitLine.length);
+    private void addSummaryRecord(XPBStatement xpbStatement, String[] lineFields) {
+        validateLineNumberOfFields(lineFields, SummaryRecord.class);
+        xpbStatement.getSummaryRecords().add(SummaryRecord.builder()
+                .statementNumber(lineFields[1])
+                .order(Integer.parseInt(lineFields[2]))
+                .type(lineFields[3])
+                .currency(lineFields[4])
+                .totalAmount(new BigDecimal(lineFields[5]))
+                .build());
+    }
+
+    private void setLayoutLayoutRecord(XPBStatement xpbStatement, String[] lineFields) {
+        validateLineNumberOfFields(lineFields, LayoutRecord.class);
         xpbStatement.setLayoutRecord(LayoutRecord.builder()
-                .statementNumber(splitLine[1])
-                .statementStartPeriod(transformToLocalDate(splitLine[2]))
-                .statementEndPeriod(transformToLocalDate(splitLine[3]))
-                .statementDate(transformToLocalDate(splitLine[4]))
-                .accountNumber(splitLine[5]).build());
+                .statementNumber(lineFields[1])
+                .statementStartPeriod(transformToLocalDate(lineFields[2]))
+                .statementEndPeriod(transformToLocalDate(lineFields[3]))
+                .statementDate(transformToLocalDate(lineFields[4]))
+                .accountNumber(lineFields[5]).build());
     }
 
     private LocalDate transformToLocalDate(String s) {
-        if (s.length() != 8)
+        int dateLength = 8;//DDMMYYYY
+        if (s.length() != dateLength)
             throw new RuntimeException("Invalid Date String : " + s);
         StringBuilder stringBuilder = new StringBuilder(s);
-        stringBuilder.insert(s.length() - 4, "-").insert(s.length() - 6, "-");
+        stringBuilder.insert(dateLength - 4, "-").insert(dateLength - 6, "-");
         String[] split = stringBuilder.toString().split("-");
         return LocalDate.of(Integer.parseInt(split[2]), Integer.parseInt(split[1]), Integer.parseInt(split[0]));
+    }
+
+    private void validateLineNumberOfFields(String[] lineFields, Class aClass) {
+        int numberOfFields = aClass.getDeclaredFields().length + 1;
+        if (lineFields.length != numberOfFields)
+            throw new IllegalArgumentException("Invalid number of fields for " + aClass.getSimpleName() + " : "
+                    + Arrays.toString(lineFields) + ". Expected " + numberOfFields + ", got " + lineFields.length);
     }
 
     @Override
@@ -173,12 +210,12 @@ public class XPBStatementFileReader implements
 
     @Override
     public void update(ExecutionContext executionContext) throws ItemStreamException {
-        LOGGER.info("update executionContext.... {} :", executionContext);
+        LOGGER.info("update executionContext : {}", executionContext);
     }
 
     @Override
     public void close() throws ItemStreamException {
-        LOGGER.info("Closing reader.... :");
+        LOGGER.info("Closing reader....");
 
     }
 }
