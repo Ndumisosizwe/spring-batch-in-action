@@ -82,6 +82,16 @@ public class XPBStatementFileReader implements
         }
     }
 
+    private void finalizeAndAddNewStatement(XPBStatement xpbStatement, Set<SummaryRecord> summaryRecords, Set<TaxRecord> taxRecords,
+                                            Set<GroupingRecord> groupingRecords) {
+        if (xpbStatement != null) {
+            xpbStatement.setSummaryRecords(summaryRecords);
+            xpbStatement.setTaxRecords(taxRecords);
+            xpbStatement.setGroupingRecords(groupingRecords);
+            statementList.add(xpbStatement);
+        }
+    }
+
     private void addGroupingRecord(Set<GroupingRecord> groupingRecords, String[] splitLine) {
         if (splitLine.length != 10)
             throw new IllegalArgumentException("Invalid number of fields for grouping (G) record : "
@@ -97,16 +107,6 @@ public class XPBStatementFileReader implements
                 .transactionCurrency(splitLine[8])
                 .totalTransactionValue(new BigDecimal(splitLine[9]))
                 .build());
-    }
-
-    private void finalizeAndAddNewStatement(XPBStatement xpbStatement, Set<SummaryRecord> summaryRecords, Set<TaxRecord> taxRecords,
-                                            Set<GroupingRecord> groupingRecords) {
-        if (xpbStatement != null) {
-            xpbStatement.setSummaryRecords(summaryRecords);
-            xpbStatement.setTaxRecords(taxRecords);
-            xpbStatement.setGroupingRecords(groupingRecords);
-            statementList.add(xpbStatement);
-        }
     }
 
     private void addTaxRecords(Set<TaxRecord> taxRecords, String[] splitLine) {
