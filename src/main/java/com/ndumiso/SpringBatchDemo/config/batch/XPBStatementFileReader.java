@@ -15,14 +15,14 @@ import java.time.LocalDate;
 import java.util.*;
 
 /**
- * A custom ItemReader that interprets and reads XPB statement 'pipe delimited' files.
+ * A custom statement ItemReader that interprets and reads a'pipe delimited' file received from XPB.
  *
  * @author F5298334
  */
-public class XPBStatementFileReader implements
-        ResourceAwareItemReaderItemStream<XPBStatement> {
+public class XPBStatementFileReader implements ResourceAwareItemReaderItemStream<XPBStatement> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(XPBStatementFileReader.class);
+    private static final String resourceDelimiter = "\\|";
 
     private Resource resource;
     private int nextStatementIndex;
@@ -49,21 +49,11 @@ public class XPBStatementFileReader implements
             LOGGER.info("header line {}", resourceHeaderLine);
             String line = "";
             XPBStatement xpbStatement = null;
-
             while (statementScanner.hasNextLine()) {
                 line = statementScanner.nextLine();
-                String[] lineFields = line.split("\\|");
+                String[] lineFields = line.split(resourceDelimiter);
                 if (line.startsWith("L|")) {
-                    finalizeAndAddNewStatement(xpbStatement);
-                    xpbStatement = new XPBStatement();
-                    xpbStatement.setFileName(resource.getFilename());
-                    xpbStatement.setProductionDate(resourceHeaderLine.split("\\|")[1]);
-                    setLayoutLayoutRecord(xpbStatement, lineFields);
-                    xpbStatement.setSummaryRecords(new TreeSet<>(Comparator.comparing(SummaryRecord::getOrder)));
-                    xpbStatement.setTaxRecords(new TreeSet<>(Comparator.comparing(TaxRecord::getOrder)));
-                    xpbStatement.setGroupingRecords(new TreeSet<>(Comparator.comparing(GroupingRecord::getOrder)));
-                    xpbStatement.setOtherRecords(new TreeSet<>(Comparator.comparing(OtherRecord::getOrder)));
-                    xpbStatement.setDetailRecords(new TreeSet<>(Comparator.comparing(DetailRecord::getOrder)));
+                    xpbStatement = createNewStatement(resource, resourceHeaderLine, xpbStatement, lineFields);
                 } else if (line.startsWith("S|") && xpbStatement != null) {
                     addSummaryRecord(xpbStatement, lineFields);
                 } else if (line.startsWith("X|") && xpbStatement != null) {
@@ -77,12 +67,9 @@ public class XPBStatementFileReader implements
                 }
             }
             // adds the very last statement before the end of the file.
-            finalizeAndAddNewStatement(xpbStatement);
+            addStatementToChunk(xpbStatement);
             nextStatementIndex = 0;
-            if (line.startsWith("T|") && Integer.parseInt(line.split("\\|")[1]) != statementList.size())
-                throw new IllegalArgumentException(
-                        "Number of statements imported from file [" + resource.getFilename() + "] does not correspond to trailer record of the file." +
-                                " Statement list size : " + statementList.size() + ". Trailer record : " + line);
+            validateTrailerRecordAgainstListOfStatements(resource, line);
 
         } catch (IOException e) {
             LOGGER.error(e.getMessage());
@@ -90,8 +77,35 @@ public class XPBStatementFileReader implements
         }
     }
 
+    /**
+     * Validates the very last line (Trailer record) of the file to ensure that the reader picked up the correct number of
+     * statements as the trailer record states.
+     *
+     * @param resource - The current .dat file
+     * @param line     The trailer record. For example ""
+     */
+    private void validateTrailerRecordAgainstListOfStatements(Resource resource, String line) {
+        if (line.startsWith("T|") && Integer.parseInt(line.split(resourceDelimiter)[1]) != statementList.size())
+            throw new IllegalArgumentException(
+                    "Number of statements imported from file [" + resource.getFilename() + "] does not correspond to trailer record of the file." +
+                            " Statement list size : " + statementList.size() + ". Trailer record : " + line);
+    }
 
-    private void finalizeAndAddNewStatement(XPBStatement xpbStatement) {
+    private XPBStatement createNewStatement(Resource resource, String resourceHeaderLine, XPBStatement xpbStatement, String[] lineFields) {
+        addStatementToChunk(xpbStatement);
+        xpbStatement = new XPBStatement();
+        xpbStatement.setFileName(resource.getFilename());
+        xpbStatement.setProductionDate(resourceHeaderLine.split(resourceDelimiter)[1]);
+        setLayoutLayoutRecord(xpbStatement, lineFields);
+        xpbStatement.setSummaryRecords(new TreeSet<>(Comparator.comparing(SummaryRecord::getOrder)));
+        xpbStatement.setTaxRecords(new TreeSet<>(Comparator.comparing(TaxRecord::getOrder)));
+        xpbStatement.setGroupingRecords(new TreeSet<>(Comparator.comparing(GroupingRecord::getOrder)));
+        xpbStatement.setOtherRecords(new TreeSet<>(Comparator.comparing(OtherRecord::getOrder)));
+        xpbStatement.setDetailRecords(new TreeSet<>(Comparator.comparing(DetailRecord::getOrder)));
+        return xpbStatement;
+    }
+
+    private void addStatementToChunk(XPBStatement xpbStatement) {
         if (xpbStatement != null) {
             statementList.add(xpbStatement);
         }

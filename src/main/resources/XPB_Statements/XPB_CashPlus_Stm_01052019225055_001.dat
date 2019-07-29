@@ -8,7 +8,6 @@ X|CPC_1234_000001|1|VAT|ZAR|1.28|16
 X|CPC_1234_000001|2|WHT|ZAR|0.40|5
 G|CPC_1234_000001|1|SC200|Cash Withdrawal|UT10032|E-Wallet Cash Withdrawal Via CashPlus Commission|4|ZAR|2500.00
 G|CPC_1234_000001|2|SC200|Cash Withdrawal|UT10030|Cash Withdrawal Via CashPlus Commission|4|ZAR|3500.00
-O|CPC_1234_000001||||||||
-D|CPC_1234_000001|1|01/04/2019|SC200|Cash Withdrawal|UT10032|E-Wallet Cash Withdrawal Via CashPlus Commission|ZAR|2500.00|ZAR|2500.00|ZAR|4.50
-D|CPC_1234_000001|2|13/04/2019|SC200|Cash Withdrawal|UT10030|Cash Withdrawal Via CashPlus Commission|ZAR|3500.00|ZAR|3500.00|ZAR|3.50
+D|CPC_1234_000001|1|01/04/2019|SC200|Cash Withdrawal|UT10032|E-Wallet Cash Withdrawal Via CashPlus Commission|ZAR|2500.00|ZAR|4.50
+D|CPC_1234_000001|2|13/04/2019|SC200|Cash Withdrawal|UT10030|Cash Withdrawal Via CashPlus Commission|ZAR|3500.00|ZAR|3.50
 T|1
