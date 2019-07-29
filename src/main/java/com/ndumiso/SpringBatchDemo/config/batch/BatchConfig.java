@@ -30,7 +30,7 @@ public class BatchConfig {
     private final StepBuilderFactory stepBuilderFactory;
 
     @Value("classpath:XPB_Statements/XPB_CashPlus_Stm_*_*.dat") //classpath
-//    @Value("file:C:/integration/xpb_statements_data/zambia/january_2018/XPB_STATEMENTS_MOCK*.csv") //in file system
+//    @Value("file:C:/integration/xpb_statements_data/XPB_CashPlus_Stm_*_*.dat") //in file system
     private Resource[] commissionStatementFiles;
 
     public BatchConfig(JobBuilderFactory jobBuilderFactory, StepBuilderFactory stepBuilderFactory) {
