@@ -65,7 +65,7 @@ public class BatchConfig {
     @Bean
     public Step step1(XPBDataItemWriter xpbDataWriter) throws IOException {
         return stepBuilderFactory.get("step1 - read statements and write them to database")
-                .<XPBStatement, XPBStatement>chunk(10)
+                .<XPBStatement, XPBStatement>chunk(3)
                 .reader(multiResourceItemReader())
 //                .processor(productItemProcessor()) we can have a processor
                 .writer(xpbDataWriter)

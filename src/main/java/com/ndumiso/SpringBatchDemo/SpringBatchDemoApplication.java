@@ -26,7 +26,7 @@ public class SpringBatchDemoApplication {
     }
 
 
-    @Scheduled(fixedRate = 8454441)
+    @Scheduled(fixedRate = 80_000)
     public void perform() throws Exception {
         JobParameters params = new JobParametersBuilder()
                 .addString("JobID", String.valueOf(System.currentTimeMillis()))

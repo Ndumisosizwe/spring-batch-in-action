@@ -21,7 +21,7 @@ public class JobCompletionNotification extends JobExecutionListenerSupport {
     @Override
     public void afterJob(JobExecution jobExecution) {
         if (jobExecution.getStatus() == BatchStatus.COMPLETED) {
-            LOG.info("!!! JOB FINISHED!");
+            LOG.info(" !!! JOB " + jobExecution.getJobId() + " FINISHED!");
         }
     }
 }

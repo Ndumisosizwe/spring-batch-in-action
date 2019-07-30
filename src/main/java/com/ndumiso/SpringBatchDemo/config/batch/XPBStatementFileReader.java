@@ -82,7 +82,7 @@ public class XPBStatementFileReader implements ResourceAwareItemReaderItemStream
      * statements as the trailer record states.
      *
      * @param resource - The current .dat file
-     * @param line     The trailer record. For example ""
+     * @param line     The trailer record. For example "T|48"
      */
     private void validateTrailerRecordAgainstListOfStatements(Resource resource, String line) {
         if (line.startsWith("T|") && Integer.parseInt(line.split(resourceDelimiter)[1]) != statementList.size())
@@ -210,6 +210,7 @@ public class XPBStatementFileReader implements ResourceAwareItemReaderItemStream
 
     @Override
     public void open(ExecutionContext executionContext) throws ItemStreamException {
+        LOGGER.info("Opening file... " + this.resource);
         Assert.notNull(resource, "Input resource must be set");
 
         if (!resource.exists()) {
