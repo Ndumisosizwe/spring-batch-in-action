@@ -5,14 +5,20 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.batch.item.ExecutionContext;
 import org.springframework.batch.item.ItemStreamException;
+import org.springframework.batch.item.file.BufferedReaderFactory;
+import org.springframework.batch.item.file.DefaultBufferedReaderFactory;
 import org.springframework.batch.item.file.ResourceAwareItemReaderItemStream;
 import org.springframework.core.io.Resource;
 import org.springframework.util.Assert;
 
+import javax.persistence.JoinColumn;
+import java.io.BufferedReader;
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.nio.charset.Charset;
 import java.time.LocalDate;
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * A custom statement ItemReader that interprets and reads a'pipe delimited' file received from XPB.
@@ -23,58 +29,51 @@ public class XPBStatementFileReader implements ResourceAwareItemReaderItemStream
 
     private static final Logger LOGGER = LoggerFactory.getLogger(XPBStatementFileReader.class);
     private static final String resourceDelimiter = "\\|";
+    // default encoding for input files
+    public static final String DEFAULT_CHARSET = Charset.defaultCharset().name();
 
     private Resource resource;
-    private int nextStatementIndex;
-    private List<XPBStatement> statementList;
+    private final List<XPBStatement> statementList = new ArrayList<>();
+    private BufferedReader reader;
+    private String encoding = DEFAULT_CHARSET;
+    private BufferedReaderFactory bufferedReaderFactory = new DefaultBufferedReaderFactory();
 
     @Override
     public XPBStatement read() throws Exception {
-        XPBStatement nextXPBStatement = null;
-        if (nextStatementIndex < statementList.size()) {
-            nextXPBStatement = statementList.get(nextStatementIndex);
-            nextStatementIndex++;
+        if (!statementList.isEmpty()) {
+            return statementList.remove(0);
         }
-        return nextXPBStatement;
+        return null;
     }
 
     @Override
     public void setResource(Resource resource) {
         this.resource = resource;
-        LOGGER.info("Reading Resource {} ", resource.getFilename());
-        try {
-            statementList = new ArrayList<>();
-            Scanner statementScanner = new Scanner(resource.getFile());
-            String resourceHeaderLine = statementScanner.nextLine();
-            LOGGER.info("header line {}", resourceHeaderLine);
-            String line = "";
-            XPBStatement xpbStatement = null;
-            while (statementScanner.hasNextLine()) {
-                line = statementScanner.nextLine();
-                String[] lineFields = line.split(resourceDelimiter);
-                if (line.startsWith("L|")) {
-                    xpbStatement = createNewStatement(resource, resourceHeaderLine, xpbStatement, lineFields);
-                } else if (line.startsWith("S|") && xpbStatement != null) {
-                    addSummaryRecord(xpbStatement, lineFields);
-                } else if (line.startsWith("X|") && xpbStatement != null) {
-                    addTaxRecords(xpbStatement, lineFields);
-                } else if (line.startsWith("G|") && xpbStatement != null) {
-                    addGroupingRecord(xpbStatement, lineFields);
-                } else if (line.startsWith("O|") && xpbStatement != null) {
-                    addOtherRecord(xpbStatement, lineFields);
-                } else if (line.startsWith("D|") && xpbStatement != null) {
-                    addDetailedRecord(xpbStatement, lineFields);
-                }
-            }
-            // adds the very last statement before the end of the file.
-            addStatementToChunk(xpbStatement);
-            nextStatementIndex = 0;
-            validateTrailerRecordAgainstListOfStatements(resource, line);
+    }
 
-        } catch (IOException e) {
-            LOGGER.error(e.getMessage());
-            throw new RuntimeException(e);
+    private void parseResourceAndStoreStatementsToList(Resource resource) {
+        LOGGER.info("Parsing Resource {} ", resource.getFilename());
+        final List<String> lines = reader.lines().collect(Collectors.toList());
+        XPBStatement xpbStatement = null;
+        for (String line : lines) {
+            String[] lineFields = line.split(resourceDelimiter);
+            if (line.startsWith("L|")) {
+                xpbStatement = createNewStatement(resource, lines.get(0), xpbStatement, lineFields);
+            } else if (line.startsWith("S|") && xpbStatement != null) {
+                addSummaryRecord(xpbStatement, lineFields);
+            } else if (line.startsWith("X|") && xpbStatement != null) {
+                addTaxRecords(xpbStatement, lineFields);
+            } else if (line.startsWith("G|") && xpbStatement != null) {
+                addGroupingRecord(xpbStatement, lineFields);
+            } else if (line.startsWith("O|") && xpbStatement != null) {
+                addOtherRecord(xpbStatement, lineFields);
+            } else if (line.startsWith("D|") && xpbStatement != null) {
+                addDetailedRecord(xpbStatement, lineFields);
+            }
         }
+        // adds the very last statement before the end of the file.
+        addStatementToList(xpbStatement);
+        validateTrailerRecordAgainstListOfStatements(resource, lines.get(lines.size() - 1));
     }
 
     /**
@@ -92,11 +91,11 @@ public class XPBStatementFileReader implements ResourceAwareItemReaderItemStream
     }
 
     private XPBStatement createNewStatement(Resource resource, String resourceHeaderLine, XPBStatement xpbStatement, String[] lineFields) {
-        addStatementToChunk(xpbStatement);
+        addStatementToList(xpbStatement);
         xpbStatement = new XPBStatement();
         xpbStatement.setFileName(resource.getFilename());
         xpbStatement.setProductionDate(resourceHeaderLine.split(resourceDelimiter)[1]);
-        setLayoutLayoutRecord(xpbStatement, lineFields);
+        setStatementLayoutFields(xpbStatement, lineFields);
         xpbStatement.setSummaryRecords(new TreeSet<>(Comparator.comparing(SummaryRecord::getOrder)));
         xpbStatement.setTaxRecords(new TreeSet<>(Comparator.comparing(TaxRecord::getOrder)));
         xpbStatement.setGroupingRecords(new TreeSet<>(Comparator.comparing(GroupingRecord::getOrder)));
@@ -105,7 +104,7 @@ public class XPBStatementFileReader implements ResourceAwareItemReaderItemStream
         return xpbStatement;
     }
 
-    private void addStatementToChunk(XPBStatement xpbStatement) {
+    private void addStatementToList(XPBStatement xpbStatement) {
         if (xpbStatement != null) {
             statementList.add(xpbStatement);
         }
@@ -181,14 +180,16 @@ public class XPBStatementFileReader implements ResourceAwareItemReaderItemStream
                 .build());
     }
 
-    private void setLayoutLayoutRecord(XPBStatement xpbStatement, String[] lineFields) {
-        validateLineNumberOfFields(lineFields, LayoutRecord.class);
-        xpbStatement.setLayoutRecord(LayoutRecord.builder()
-                .statementNumber(lineFields[1])
-                .statementStartPeriod(transformToLocalDate(lineFields[2]))
-                .statementEndPeriod(transformToLocalDate(lineFields[3]))
-                .statementDate(transformToLocalDate(lineFields[4]))
-                .accountNumber(lineFields[5]).build());
+    private void setStatementLayoutFields(XPBStatement xpbStatement, String[] lineFields) {
+        int layoutRecordLength = 6;
+        if (lineFields.length != layoutRecordLength)
+            throw new IllegalArgumentException("Invalid number of fields picked up from resource. for TYPE -> : " + XPBStatement.class.getSimpleName() + ". LINE -> : "
+                    + Arrays.toString(lineFields) + ". Expected " + 6 + ", got " + lineFields.length);
+        xpbStatement.setStatementNumber(lineFields[1]);
+        xpbStatement.setStatementStartPeriod(transformToLocalDate(lineFields[2]));
+        xpbStatement.setStatementEndPeriod(transformToLocalDate(lineFields[3]));
+        xpbStatement.setStatementDate(transformToLocalDate(lineFields[4]));
+        xpbStatement.setAccountNumber(lineFields[5]);
     }
 
     private LocalDate transformToLocalDate(String s) {
@@ -202,9 +203,10 @@ public class XPBStatementFileReader implements ResourceAwareItemReaderItemStream
     }
 
     private void validateLineNumberOfFields(String[] lineFields, Class aClass) {
-        int numberOfFields = aClass.getDeclaredFields().length + 1;
+        int numberOfFields = Arrays.stream(aClass.getDeclaredFields())
+                .filter(field -> !field.isAnnotationPresent(JoinColumn.class)).toArray().length + 1;
         if (lineFields.length != numberOfFields)
-            throw new IllegalArgumentException("Invalid number of fields for " + aClass.getSimpleName() + " : "
+            throw new IllegalArgumentException("Invalid number of fields picked up from resource. for TYPE -> : " + aClass.getSimpleName() + ". LINE -> : "
                     + Arrays.toString(lineFields) + ". Expected " + numberOfFields + ", got " + lineFields.length);
     }
 
@@ -220,6 +222,15 @@ public class XPBStatementFileReader implements ResourceAwareItemReaderItemStream
 
         if (!resource.isReadable()) {
             LOGGER.warn("Input resource is not readable " + resource.getDescription());
+            return;
+        }
+
+        try {
+            reader = bufferedReaderFactory.create(resource, encoding);
+            parseResourceAndStoreStatementsToList(resource);
+        } catch (IOException e) {
+            LOGGER.error(e.getMessage());
+            throw new RuntimeException(e);
         }
     }
 
@@ -231,6 +242,15 @@ public class XPBStatementFileReader implements ResourceAwareItemReaderItemStream
     @Override
     public void close() throws ItemStreamException {
         LOGGER.info("Closing reader....");
+        try {
+            if (reader != null) {
+                reader.close();
+            }
+        } catch (IOException e) {
+            LOGGER.error(e.getMessage());
+            throw new RuntimeException(e);
+        }
+
 
     }
 }

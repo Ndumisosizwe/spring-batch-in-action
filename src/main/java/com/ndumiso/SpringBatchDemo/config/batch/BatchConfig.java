@@ -8,10 +8,8 @@ import org.springframework.batch.core.configuration.annotation.JobBuilderFactory
 import org.springframework.batch.core.configuration.annotation.StepBuilderFactory;
 import org.springframework.batch.core.launch.support.RunIdIncrementer;
 import org.springframework.batch.item.file.MultiResourceItemReader;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.core.io.Resource;
 
 import java.io.IOException;
 
@@ -29,9 +27,9 @@ public class BatchConfig {
 
     private final StepBuilderFactory stepBuilderFactory;
 
-    @Value("classpath:XPB_Statements/XPB_CashPlus_Stm_*_*.dat") //classpath
+//    @Value("classpath:XPB_Statements/XPB_CashPlus_Stm_*_*.dat") //classpath
 //    @Value("file:C:/integration/xpb_statements_data/XPB_CashPlus_Stm_*_*.dat") //in file system
-    private Resource[] commissionStatementFiles;
+//    private Resource[] commissionStatementFiles;
 
     public BatchConfig(JobBuilderFactory jobBuilderFactory, StepBuilderFactory stepBuilderFactory) {
         this.jobBuilderFactory = jobBuilderFactory;
@@ -41,20 +39,18 @@ public class BatchConfig {
     @Bean
     public MultiResourceItemReader<XPBStatement> multiResourceItemReader() throws IOException {
         MultiResourceItemReader<XPBStatement> resourceItemReader = new MultiResourceItemReader<>();
-        resourceItemReader.setResources(commissionStatementFiles);
-        resourceItemReader.setStrict(true);
-        resourceItemReader.setDelegate(fileItemReader());
+        resourceItemReader.setDelegate(statementItemReader());
         return resourceItemReader;
     }
 
     @Bean
-    public XPBStatementFileReader fileItemReader() {
+    public XPBStatementFileReader statementItemReader() {
         return new XPBStatementFileReader();
     }
 
     @Bean
-    public Job importXPBDataJob(JobCompletionNotification listener, Step step1) {
-        return jobBuilderFactory.get("importXPBData")
+    public Job importXPBStatements(JobCompletionNotification listener, Step step1) {
+        return jobBuilderFactory.get("importXPBStatements")
                 .incrementer(new RunIdIncrementer())
                 .listener(listener)
                 .flow(step1)
@@ -64,11 +60,16 @@ public class BatchConfig {
 
     @Bean
     public Step step1(XPBDataItemWriter xpbDataWriter) throws IOException {
+//        ThreadPoolTaskExecutor threadPoolTaskExecutor = new ThreadPoolTaskExecutor();
+//        threadPoolTaskExecutor.setCorePoolSize(4);
+//        threadPoolTaskExecutor.setMaxPoolSize(4);
+//        threadPoolTaskExecutor.afterPropertiesSet();
         return stepBuilderFactory.get("step1 - read statements and write them to database")
-                .<XPBStatement, XPBStatement>chunk(3)
+                .<XPBStatement, XPBStatement>chunk(1000)
                 .reader(multiResourceItemReader())
 //                .processor(productItemProcessor()) we can have a processor
                 .writer(xpbDataWriter)
+//                .taskExecutor(threadPoolTaskExecutor)
                 .build();
 
     }

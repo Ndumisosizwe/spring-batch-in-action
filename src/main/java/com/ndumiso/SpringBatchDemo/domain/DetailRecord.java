@@ -2,6 +2,10 @@ package com.ndumiso.SpringBatchDemo.domain;
 
 import lombok.*;
 
+import javax.persistence.Column;
+import javax.persistence.Entity;
+import javax.persistence.JoinColumn;
+import javax.persistence.ManyToOne;
 import javax.validation.constraints.NotNull;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -11,14 +15,16 @@ import java.time.LocalDate;
 @ToString
 @NoArgsConstructor
 @AllArgsConstructor
-@EqualsAndHashCode
+@EqualsAndHashCode(callSuper = false)
 @Builder
-public class DetailRecord {
+@Entity
+public class DetailRecord extends BaseEntity {
 
     @NotNull
     private String statementNumber;
 
     @NotNull
+    @Column(name = "sorting_order")
     private Integer order;
 
     @NotNull
@@ -47,4 +53,8 @@ public class DetailRecord {
 
     @NotNull
     private BigDecimal commissionAmount;
+
+    @ManyToOne
+    @JoinColumn(referencedColumnName = "id")
+    private XPBStatement xpbStatement;
 }
