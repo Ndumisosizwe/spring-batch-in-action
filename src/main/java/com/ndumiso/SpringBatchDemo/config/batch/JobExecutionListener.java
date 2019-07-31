@@ -20,9 +20,9 @@ import java.io.IOException;
  * @author Ndumiso
  */
 @Component
-public class JobCompletionNotification extends JobExecutionListenerSupport implements ApplicationContextAware {
+public class JobExecutionListener extends JobExecutionListenerSupport implements ApplicationContextAware {
 
-    private static final Logger LOG = LoggerFactory.getLogger(JobCompletionNotification.class);
+    private static final Logger LOG = LoggerFactory.getLogger(JobExecutionListener.class);
     private ApplicationContext applicationContext;
 
     @Override
@@ -38,7 +38,8 @@ public class JobCompletionNotification extends JobExecutionListenerSupport imple
     public void beforeJob(JobExecution jobExecution) {
         MultiResourceItemReader reader = (MultiResourceItemReader) applicationContext.getBean("multiResourceItemReader");
         try {
-            reader.setResources(applicationContext.getResources("file:C:/integration/xpb_statements_data/XPB_CashPlus_Stm_*_*.dat"));
+            String locationPattern = "file:C:/integration/xpb_statements_data/XPB_CashPlus_Stm_*_*.dat";
+            reader.setResources(applicationContext.getResources(locationPattern));
         } catch (IOException ex) {
             LOG.error("Unable to set file resources to bean multiResourceItemReader", ex);
         }

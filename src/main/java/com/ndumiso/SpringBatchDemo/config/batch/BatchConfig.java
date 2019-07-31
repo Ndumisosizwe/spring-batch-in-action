@@ -27,10 +27,6 @@ public class BatchConfig {
 
     private final StepBuilderFactory stepBuilderFactory;
 
-//    @Value("classpath:XPB_Statements/XPB_CashPlus_Stm_*_*.dat") //classpath
-//    @Value("file:C:/integration/xpb_statements_data/XPB_CashPlus_Stm_*_*.dat") //in file system
-//    private Resource[] commissionStatementFiles;
-
     public BatchConfig(JobBuilderFactory jobBuilderFactory, StepBuilderFactory stepBuilderFactory) {
         this.jobBuilderFactory = jobBuilderFactory;
         this.stepBuilderFactory = stepBuilderFactory;
@@ -49,7 +45,7 @@ public class BatchConfig {
     }
 
     @Bean
-    public Job importXPBStatements(JobCompletionNotification listener, Step step1) {
+    public Job importXPBStatements(JobExecutionListener listener, Step step1) {
         return jobBuilderFactory.get("importXPBStatements")
                 .incrementer(new RunIdIncrementer())
                 .listener(listener)
