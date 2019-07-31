@@ -33,7 +33,7 @@ public class BatchConfig {
     }
 
     @Bean
-    public MultiResourceItemReader<XPBStatement> multiResourceItemReader() throws IOException {
+    public MultiResourceItemReader<XPBStatement> multiResourceStatementReader() throws IOException {
         MultiResourceItemReader<XPBStatement> resourceItemReader = new MultiResourceItemReader<>();
         resourceItemReader.setDelegate(statementItemReader());
         return resourceItemReader;
@@ -49,23 +49,25 @@ public class BatchConfig {
         return jobBuilderFactory.get("importXPBStatements")
                 .incrementer(new RunIdIncrementer())
                 .listener(listener)
-                .flow(step1)
-                .end()
+                .start(step1)
                 .build();
     }
 
     @Bean
-    public Step step1(XPBDataItemWriter xpbDataWriter) throws IOException {
-//        ThreadPoolTaskExecutor threadPoolTaskExecutor = new ThreadPoolTaskExecutor();
-//        threadPoolTaskExecutor.setCorePoolSize(4);
-//        threadPoolTaskExecutor.setMaxPoolSize(4);
-//        threadPoolTaskExecutor.afterPropertiesSet();
+    public XPBStatementProcessor statementProcessor() {
+        return new XPBStatementProcessor();
+    }
+
+
+    @Bean
+    public Step step1(XPBStatementWriter xpbDataWriter) throws IOException {
         return stepBuilderFactory.get("step1 - read statements and write them to database")
                 .<XPBStatement, XPBStatement>chunk(1000)
-                .reader(multiResourceItemReader())
-//                .processor(productItemProcessor()) we can have a processor
+                .reader(multiResourceStatementReader())
+                .faultTolerant()
+                .processor(statementProcessor())
                 .writer(xpbDataWriter)
-//                .taskExecutor(threadPoolTaskExecutor)
+                .startLimit(5)
                 .build();
 
     }

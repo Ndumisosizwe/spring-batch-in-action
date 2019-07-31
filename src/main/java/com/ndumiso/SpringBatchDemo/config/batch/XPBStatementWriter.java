@@ -14,12 +14,12 @@ import java.util.List;
  * We can inject a JPA repository here, or a datasource and persist chunks to DB
  */
 @Component
-public class XPBDataItemWriter implements ItemWriter<XPBStatement> {
+public class XPBStatementWriter implements ItemWriter<XPBStatement> {
 
-    private static final Logger LOG = LoggerFactory.getLogger(XPBDataItemWriter.class);
+    private static final Logger LOG = LoggerFactory.getLogger(XPBStatementWriter.class);
     private final XPBStatementRepository statementRepository;
 
-    public XPBDataItemWriter(XPBStatementRepository statementRepository) {
+    public XPBStatementWriter(XPBStatementRepository statementRepository) {
         this.statementRepository = statementRepository;
     }
 

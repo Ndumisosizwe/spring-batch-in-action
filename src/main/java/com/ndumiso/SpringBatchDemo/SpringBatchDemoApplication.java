@@ -25,7 +25,7 @@ public class SpringBatchDemoApplication {
         SpringApplication.run(SpringBatchDemoApplication.class, args);
     }
 
-    @Scheduled(fixedRate = 2_000)
+    @Scheduled(fixedRate = 245_000)
     public void perform() throws Exception {
         this.jobLauncher.run(job, new JobParametersBuilder().
                 addLong("time", System.currentTimeMillis())

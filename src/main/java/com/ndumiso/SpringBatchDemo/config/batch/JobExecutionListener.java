@@ -29,19 +29,19 @@ public class JobExecutionListener extends JobExecutionListenerSupport implements
     public void afterJob(JobExecution jobExecution) {
         if (jobExecution.getStatus() == BatchStatus.COMPLETED) {
             LOG.info("JOB " + jobExecution.getJobId() + " FINISHED! " + jobExecution.getJobInstance().getJobName());
-            MultiResourceItemReader reader = (MultiResourceItemReader) applicationContext.getBean("multiResourceItemReader");
+            MultiResourceItemReader reader = (MultiResourceItemReader) applicationContext.getBean("multiResourceStatementReader");
             reader.close();
         }
     }
 
     @Override
     public void beforeJob(JobExecution jobExecution) {
-        MultiResourceItemReader reader = (MultiResourceItemReader) applicationContext.getBean("multiResourceItemReader");
+        MultiResourceItemReader reader = (MultiResourceItemReader) applicationContext.getBean("multiResourceStatementReader");
         try {
             String locationPattern = "file:C:/integration/xpb_statements_data/XPB_CashPlus_Stm_*_*.dat";
             reader.setResources(applicationContext.getResources(locationPattern));
         } catch (IOException ex) {
-            LOG.error("Unable to set file resources to bean multiResourceItemReader", ex);
+            LOG.error("Unable to set file resources to bean multiResourceStatementReader", ex);
         }
     }
 
