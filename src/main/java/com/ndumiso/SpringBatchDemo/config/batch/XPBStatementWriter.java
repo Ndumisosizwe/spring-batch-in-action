@@ -24,7 +24,6 @@ public class XPBStatementWriter implements ItemWriter<XPBStatement> {
     }
 
     @Override
-    @Retryable
     public void write(List<? extends XPBStatement> items) throws Exception {
         items.forEach(i -> i.setStatementNumber(i.getStatementNumber().concat("_"+ Thread.currentThread().getName())));
         LOG.info("Chunk size {}, Writing items to database : {} ", items.size(), items);

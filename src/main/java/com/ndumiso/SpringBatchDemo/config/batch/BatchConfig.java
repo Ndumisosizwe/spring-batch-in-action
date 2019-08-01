@@ -62,7 +62,7 @@ public class BatchConfig {
     @Bean
     public Step step1(XPBStatementWriter xpbDataWriter) throws IOException {
         return stepBuilderFactory.get("step1 - read statements and write them to database")
-                .<XPBStatement, XPBStatement>chunk(1000)
+                .<XPBStatement, XPBStatement>chunk(5_000)
                 .reader(multiResourceStatementReader())
                 .faultTolerant()
                 .processor(statementProcessor())
