@@ -113,7 +113,7 @@ public class BatchConfig {
     @Bean
     public Step step1(XPBStatementWriter xpbDataWriter) {
         return stepBuilderFactory.get("step1 - read statements and write them to database")
-                .<XPBStatement, XPBStatement>chunk(1)
+                .<XPBStatement, XPBStatement>chunk(1000)
                 .reader(statementItemReader(null))
                 .faultTolerant()
                 .processor(statementProcessor())
