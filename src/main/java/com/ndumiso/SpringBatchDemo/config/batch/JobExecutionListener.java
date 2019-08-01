@@ -29,20 +29,20 @@ public class JobExecutionListener extends JobExecutionListenerSupport implements
     public void afterJob(JobExecution jobExecution) {
         if (jobExecution.getStatus() == BatchStatus.COMPLETED) {
             LOG.info("JOB " + jobExecution.getJobId() + " FINISHED! " + jobExecution.getJobInstance().getJobName());
-            MultiResourceItemReader reader = (MultiResourceItemReader) applicationContext.getBean("multiResourceStatementReader");
-            reader.close();
         }
     }
 
     @Override
     public void beforeJob(JobExecution jobExecution) {
-        MultiResourceItemReader reader = (MultiResourceItemReader) applicationContext.getBean("multiResourceStatementReader");
-        try {
-            String locationPattern = "file:C:/integration/xpb_statements_data/XPB_CashPlus_Stm_*_*.dat";
-            reader.setResources(applicationContext.getResources(locationPattern));
-        } catch (IOException ex) {
-            LOG.error("Unable to set file resources to bean multiResourceStatementReader", ex);
-        }
+//        MultiResourceItemReader reader = (MultiResourceItemReader) applicationContext.getBean("multiResourceStatementReader");
+//        try {
+//            String locationPatternWndows = "file:C:/integration/xpb_statements_data/XPB_CashPlus_Stm_*_*.dat";
+//            String locationPatternLinux = "file:/home/f5298334/Documents/xpb_statements/XPB_CashPlus_Stm_*_*.dat";
+//            String classPtahLocationPattern = "classpath:XPB_Statements/XPB_CashPlus_Stm_*_*.dat";
+//            reader.setResources(applicationContext.getResources(classPtahLocationPattern));
+//        } catch (IOException ex) {
+//            LOG.error("Unable to set file resources to bean multiResourceStatementReader", ex);
+//        }
     }
 
     @Override
