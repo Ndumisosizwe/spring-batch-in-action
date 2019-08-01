@@ -5,7 +5,6 @@ import com.ndumiso.SpringBatchDemo.repository.XPBStatementRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.batch.item.ItemWriter;
-import org.springframework.retry.annotation.Retryable;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -25,8 +24,6 @@ public class XPBStatementWriter implements ItemWriter<XPBStatement> {
 
     @Override
     public void write(List<? extends XPBStatement> items) throws Exception {
-        items.forEach(i -> i.setStatementNumber(i.getStatementNumber().concat("_"+ Thread.currentThread().getName())));
-        LOG.info("Chunk size {}, Writing items to database : {} ", items.size(), items);
         statementRepository.saveAll(items);
     }
 }

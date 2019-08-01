@@ -14,6 +14,7 @@ public class XPBStatementProcessor implements ItemProcessor<XPBStatement, XPBSta
     @Override
     public XPBStatement process(XPBStatement item) throws Exception {
         LOGGER.info("Processing statement " + item);
+        item.setStatementNumber(item.getStatementNumber().concat("_" + Thread.currentThread().getName()));
         return item;
     }
 }
