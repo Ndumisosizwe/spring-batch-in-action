@@ -51,8 +51,11 @@ public class BatchConfig {
         MultiResourcePartitioner multiResourcePartitioner = new MultiResourcePartitioner();
         ResourcePatternResolver resolver = new PathMatchingResourcePatternResolver();
         Resource[] resources = null;
+        String LocationPatternClassPtah = "XPB_Statements/XPB_CashPlus_Stm_*_*.dat";
+        String locationPatternWindows = "file:C:/integration/xpb_statements/XPB_CashPlus_Stm_*_*.dat";
+        String locationPatternLinux = "file:/home/f5298334/Documents/xpb_statements/XPB_CashPlus_Stm_*_*.dat";
         try {
-            resources = resolver.getResources("file:/home/f5298334/Documents/xpb_statements/XPB_CashPlus_Stm_*_*.dat");
+            resources = resolver.getResources(locationPatternLinux);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
