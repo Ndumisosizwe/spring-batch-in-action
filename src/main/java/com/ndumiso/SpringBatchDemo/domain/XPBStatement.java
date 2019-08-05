@@ -3,7 +3,6 @@ package com.ndumiso.SpringBatchDemo.domain;
 import lombok.*;
 
 import javax.persistence.CascadeType;
-import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.OneToMany;
 import javax.validation.constraints.NotNull;
@@ -51,6 +50,10 @@ public class XPBStatement extends BaseEntity {
     @NotNull
     @EqualsAndHashCode.Include
     private String accountNumber;
+
+    @NotNull
+    @EqualsAndHashCode.Include
+    private String uniqueCustomerNumber;
     //------- Layout Record End
 
     @NotNull

@@ -39,6 +39,9 @@ public class BatchConfig {
 
     private final StepBuilderFactory stepBuilderFactory;
 
+    @Value("${resource.location.pattern}")
+    private String locationPattern;
+
     public BatchConfig(JobBuilderFactory jobBuilderFactory, StepBuilderFactory stepBuilderFactory) {
         this.jobBuilderFactory = jobBuilderFactory;
         this.stepBuilderFactory = stepBuilderFactory;
@@ -47,19 +50,16 @@ public class BatchConfig {
     @StepScope
     @Bean
     public Partitioner partitioner() {
-        LOGGER.info("************** building step partitioner ***************");
         MultiResourcePartitioner multiResourcePartitioner = new MultiResourcePartitioner();
         ResourcePatternResolver resolver = new PathMatchingResourcePatternResolver();
         Resource[] resources = null;
-        String LocationPatternClassPtah = "XPB_Statements/XPB_CashPlus_Stm_*_*.dat";
-        String locationPatternWindows = "file:C:/integration/xpb_statements/XPB_CashPlus_Stm_*_*.dat";
-        String locationPatternLinux = "file:/home/f5298334/Documents/xpb_statements/XPB_CashPlus_Stm_*_*.dat";
         try {
-            resources = resolver.getResources(locationPatternLinux);
+            resources = resolver.getResources(locationPattern);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
         multiResourcePartitioner.setResources(resources);
+        multiResourcePartitioner.partition(10);
         multiResourcePartitioner.partition(10);
         return multiResourcePartitioner;
     }
@@ -87,10 +87,12 @@ public class BatchConfig {
     @StepScope
     public XPBStatementFileReader statementItemReader(@Value("#{stepExecutionContext['fileName']}") String filename) {
         XPBStatementFileReader xpbStatementFileReader = new XPBStatementFileReader();
+        xpbStatementFileReader.setStrict(true);
         try {
             xpbStatementFileReader.setResource(new UrlResource(filename));
         } catch (MalformedURLException e) {
-            e.printStackTrace();
+            LOGGER.error(e.getMessage());
+            throw new RuntimeException(e);
         }
         return xpbStatementFileReader;
     }
@@ -113,7 +115,7 @@ public class BatchConfig {
     @Bean
     public Step step1(XPBStatementWriter xpbDataWriter) {
         return stepBuilderFactory.get("step1 - read statements and write them to database")
-                .<XPBStatement, XPBStatement>chunk(1000)
+                .<XPBStatement, XPBStatement>chunk(1_000)
                 .reader(statementItemReader(null))
                 .faultTolerant()
                 .processor(statementProcessor())

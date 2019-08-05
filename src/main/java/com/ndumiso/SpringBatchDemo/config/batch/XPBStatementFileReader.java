@@ -38,6 +38,9 @@ public class XPBStatementFileReader implements ResourceAwareItemReaderItemStream
     private String encoding = DEFAULT_CHARSET;
     private BufferedReaderFactory bufferedReaderFactory = new DefaultBufferedReaderFactory();
 
+
+    private boolean strict;
+
     @Override
     public XPBStatement read() throws Exception {
         if (!statementList.isEmpty()) {
@@ -181,15 +184,16 @@ public class XPBStatementFileReader implements ResourceAwareItemReaderItemStream
     }
 
     private void setStatementLayoutFields(XPBStatement xpbStatement, String[] lineFields) {
-        int layoutRecordLength = 6;
+        int layoutRecordLength = 7;
         if (lineFields.length != layoutRecordLength)
             throw new IllegalArgumentException("Invalid number of fields picked up from resource. for TYPE -> : " + XPBStatement.class.getSimpleName() + ". LINE -> : "
-                    + Arrays.toString(lineFields) + ". Expected " + 6 + ", got " + lineFields.length);
+                    + Arrays.toString(lineFields) + ". Expected " + 7 + ", got " + lineFields.length);
         xpbStatement.setStatementNumber(lineFields[1]);
         xpbStatement.setStatementStartPeriod(transformToLocalDate(lineFields[2]));
         xpbStatement.setStatementEndPeriod(transformToLocalDate(lineFields[3]));
         xpbStatement.setStatementDate(transformToLocalDate(lineFields[4]));
         xpbStatement.setAccountNumber(lineFields[5]);
+        xpbStatement.setUniqueCustomerNumber(lineFields[6]);
     }
 
     private LocalDate transformToLocalDate(String s) {
@@ -217,14 +221,20 @@ public class XPBStatementFileReader implements ResourceAwareItemReaderItemStream
 
         if (!resource.exists()) {
             LOGGER.warn("Input resource does not exist " + resource.getDescription());
-            return;
+            if (this.strict) {
+                throw new IllegalStateException("Input resource must exist (reader is in 'strict' mode): " + this.resource);
+            } else {
+                LOGGER.warn("Input resource does not exist " + this.resource.getDescription());
+            }
         }
-
-        if (!resource.isReadable()) {
+        else if (!resource.isReadable()) {
             LOGGER.warn("Input resource is not readable " + resource.getDescription());
-            return;
+            if (this.strict) {
+                throw new IllegalStateException("Input resource must be readable (reader is in 'strict' mode): " + this.resource);
+            } else {
+                LOGGER.warn("Input resource is not readable " + this.resource.getDescription());
+            }
         }
-
         try {
             reader = bufferedReaderFactory.create(resource, encoding);
             parseResourceAndStoreStatementsToList(resource);
@@ -232,6 +242,10 @@ public class XPBStatementFileReader implements ResourceAwareItemReaderItemStream
             LOGGER.error(e.getMessage());
             throw new RuntimeException(e);
         }
+    }
+
+    public void setStrict(boolean strict) {
+        this.strict = strict;
     }
 
     @Override

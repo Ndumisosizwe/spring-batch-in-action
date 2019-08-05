@@ -24,6 +24,7 @@ public class XPBStatementWriter implements ItemWriter<XPBStatement> {
 
     @Override
     public void write(List<? extends XPBStatement> items) throws Exception {
+        LOG.info("writing statements {}", items);
         statementRepository.saveAll(items);
     }
 }
